@@ -1,0 +1,176 @@
+% =============================================================================
+%  chart_mpi.tex  —  Diagramme Speedup / Efficacité MPI
+% =============================================================================
+% Auteur     : Merbouche Abdelatif
+% Module     : Calculs Parallèles — M1 HPC, USTHB
+% Encadrante : Mme Baba Ali
+% Année      : 2025/2026
+%
+% Description :
+%   Reproduction vectorielle du diagramme de performance généré par
+%   l'application web du projet MPI. Ce graphique présente l'évolution
+%   du speedup et de l'efficacité de l'algorithme k-NN sur un dataset
+%   de classification, selon le nombre de processus MPI.
+%
+% Compilation :
+%   pdflatex chart_mpi.tex
+%   (ou lualatex chart_mpi.tex)
+%
+% Résultat : chart_mpi.pdf (graphique vectoriel haute qualité)
+% =============================================================================
+
+\documentclass[tikz,border=5pt]{standalone}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+
+% --- Palette de couleurs du projet ---
+\definecolor{mpiBlue}{HTML}{2563EB}
+\definecolor{mpiGreen}{HTML}{059669}
+\definecolor{mpiGray}{HTML}{94A3B8}
+\definecolor{mpiDark}{HTML}{1E3A5F}
+
+\begin{document}
+\begin{tikzpicture}
+
+% ============================================================================
+%  DONNÉES EXPÉRIMENTALES
+%  k-NN — Dataset classification (similaire Iris)
+%  Ts = 0.025 s (temps séquentiel de référence)
+% ============================================================================
+\pgfplotstableread{
+  p    speedup    efficiency
+  1    1.00       100.0
+  2    1.89        94.7
+  4    3.47        86.8
+  6    4.90        81.7
+  8    6.25        78.1
+  10   7.58        75.8
+  12   8.62        71.8
+  16  10.87        67.9
+  20  12.50        62.5
+}\datatable
+
+% ============================================================================
+%  AXE Y GAUCHE — SPEEDUP
+% ============================================================================
+\begin{axis}[
+    width=14cm,
+    height=8cm,
+    axis y line*=left,
+    xlabel={\textbf{Nombre de processus MPI ($p$)}},
+    ylabel={\textbf{Speedup $S = T_s / T_p$}},
+    xmin=0, xmax=21,
+    ymin=0, ymax=21,
+    xtick={1,2,4,6,8,10,12,16,20},
+    ytick={0,2,4,6,8,10,12,14,16,18,20},
+    grid=major,
+    grid style={dashed, mpiGray!40},
+    minor y tick num=1,
+    legend style={
+      at={(0.02,0.98)},
+      anchor=north west,
+      draw=mpiGray,
+      fill=white,
+      font=\small
+    },
+    title={\Large\textbf{Speedup et efficacite --- k-NN (dataset classification)}},
+    title style={yshift=0.3cm, text=mpiDark},
+    label style={font=\small},
+    tick label style={font=\small},
+    axis line style={mpiDark},
+]
+
+% Speedup observé (courbe + marqueurs)
+\addplot[
+  color=mpiBlue,
+  mark=*,
+  mark size=2.5pt,
+  mark options={fill=white, draw=mpiBlue, line width=1.2pt},
+  line width=2pt,
+  smooth,
+  tension=0.2
+]
+  table [x=p, y=speedup] {\datatable};
+\addlegendentry{Speedup observé}
+
+% Speedup idéal (linéaire S = p)
+\addplot[
+  color=mpiGray,
+  dashed,
+  line width=1.2pt,
+  domain=0:21,
+  samples=50
+]
+  {x};
+\addlegendentry{Speedup idéal ($S = p$)}
+
+% Annotation du dernier point
+\node[anchor=south west, font=\footnotesize\bfseries, color=mpiBlue]
+  at (axis cs:18,12.5) {$12{,}50\times$};
+\draw[mpiGray, ->, thick]
+  (axis cs:17,11.8) -- (axis cs:19.5,12.5);
+
+\end{axis}
+
+% ============================================================================
+%  AXE Y DROITE — EFFICACITÉ (%)
+% ============================================================================
+\begin{axis}[
+    width=14cm,
+    height=8cm,
+    axis y line*=right,
+    axis x line=none,
+    ylabel={\textbf{Efficacité $E = S/p$ (\%)}},
+    ymin=0, ymax=110,
+    ytick={0,20,40,60,80,100},
+    legend style={
+      at={(0.02,0.72)},
+      anchor=north west,
+      draw=mpiGray,
+      fill=white,
+      font=\small
+    },
+    label style={font=\small},
+    tick label style={font=\small},
+    axis line style={mpiDark},
+]
+
+% Efficacité observée (courbe + marqueurs carrés)
+\addplot[
+  color=mpiGreen,
+  mark=square*,
+  mark size=2.5pt,
+  mark options={fill=white, draw=mpiGreen, line width=1.2pt},
+  line width=2pt,
+  smooth,
+  tension=0.2
+]
+  table [x=p, y=efficiency] {\datatable};
+\addlegendentry{Efficacité (\%)}
+
+% Efficacité idéale (100 %)
+\addplot[
+  color=mpiGray,
+  dashed,
+  line width=1.2pt,
+  domain=0:21,
+  samples=50
+]
+  {100};
+\addlegendentry{Efficacité idéale (100 \%)}
+
+% Annotation du dernier point
+\node[anchor=north east, font=\footnotesize\bfseries, color=mpiGreen]
+  at (axis cs:18.5,62.5) {$62{,}5\,\%$};
+\draw[mpiGray, ->, thick]
+  (axis cs:17,55) -- (axis cs:19.5,62);
+
+\end{axis}
+
+\end{tikzpicture}
+\end{document}

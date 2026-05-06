@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Parallel Computing - MPI & Machine Learning</title>
+  <link rel="icon" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/svgs/solid/microchip.svg" type="image/svg+xml">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&family=Space+Mono&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      min-height: 100vh;
+      font-family: 'Exo 2', sans-serif;
+      color: #e0e0e0;
+      overflow-x: hidden;
+    }
+
+    .cyber-grid {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      z-index: -1;
+    }
+
+    .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
+    .particle {
+      position: absolute; width: 2px; height: 2px; background: rgba(0, 255, 255, 0.6);
+      border-radius: 50%; animation: float 10s infinite ease-in-out;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { transform: translateY(-100vh) translateX(50px); opacity: 0; }
+    }
+
+    .header {
+      background: rgba(0, 10, 20, 0.9); border-bottom: 2px solid #00ffff;
+      padding: 15px 30px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px);
+    }
+    .header-left { display: flex; align-items: center; gap: 15px; }
+    .mpi-logo {
+      width: 50px; height: 50px; border: 2px solid #00ffff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; background: rgba(0, 255, 255, 0.1);
+    }
+    .mpi-logo i { font-size: 24px; color: #00ffff; }
+    .header-title {
+      font-family: 'Orbitron', sans-serif; font-size: 1.4em; font-weight: 700;
+      color: #00ffff; text-transform: uppercase; letter-spacing: 2px;
+    }
+    .header-subtitle { font-size: 0.8em; color: #888; margin-top: 2px; }
+
+    .student-badge {
+      background: rgba(0, 255, 255, 0.1); border: 1px solid #00ffff;
+      padding: 8px 15px; border-radius: 20px; font-family: 'Space Mono', monospace;
+      font-size: 0.8em; color: #00ffff;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 30px; }
+
+    .dashboard { display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; margin-top: 20px; }
+
+    .panel {
+      background: rgba(0, 10, 20, 0.8); border: 1px solid rgba(0, 255, 255, 0.2);
+      border-radius: 15px; padding: 25px; backdrop-filter: blur(5px);
+    }
+    .panel-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+      padding-bottom: 15px; border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+    }
+    .panel-header i { font-size: 1.2em; color: #00ffff; }
+    .panel-title { font-family: 'Orbitron', sans-serif; font-size: 1.1em; color: #00ffff; text-transform: uppercase; }
+
+    .algo-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+    .algo-btn {
+      padding: 20px; border: 2px solid rgba(0, 255, 255, 0.3); border-radius: 12px;
+      background: rgba(0, 20, 40, 0.6); color: #e0e0e0; cursor: pointer;
+      transition: all 0.3s; text-align: center; position: relative; overflow: hidden;
+    }
+    .algo-btn::before {
+      content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+      background: rgba(0, 255, 255, 0.1); transition: left 0.3s;
+    }
+    .algo-btn:hover::before { left: 0; }
+    .algo-btn:hover { border-color: #00ffff; transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0, 255, 255, 0.2); }
+    .algo-btn.active { border-color: #00ffff; background: rgba(0, 255, 255, 0.15); }
+    .algo-btn i { font-size: 2em; margin-bottom: 10px; display: block; color: #00ffff; }
+    .algo-btn .algo-name { font-family: 'Orbitron', sans-serif; font-size: 1.1em; font-weight: 700; }
+    .algo-btn .algo-desc { font-size: 0.8em; color: #888; margin-top: 5px; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; margin-bottom: 8px; font-weight: 600; color: #00ffff; font-size: 0.9em; text-transform: uppercase; }
+    .form-control {
+      width: 100%; padding: 12px; background: rgba(0, 10, 20, 0.8);
+      border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 8px;
+      color: #e0e0e0; font-family: 'Exo 2', sans-serif; font-size: 1em;
+    }
+    .form-control:focus { outline: none; border-color: #00ffff; box-shadow: 0 0 10px rgba(0, 255, 255, 0.2); }
+
+    .dataset-selector {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;
+    }
+    .dataset-option {
+      padding: 12px; border: 1px solid rgba(0, 255, 255, 0.2); border-radius: 8px;
+      background: rgba(0, 20, 40, 0.5); cursor: pointer; text-align: center; transition: all 0.3s;
+    }
+    .dataset-option:hover { border-color: #00ffff; background: rgba(0, 255, 255, 0.1); }
+    .dataset-option.active { border-color: #00ffff; background: rgba(0, 255, 255, 0.15); }
+    .dataset-option i { color: #00ffff; margin-bottom: 5px; display: block; }
+    .dataset-option .ds-name { font-weight: 600; font-size: 0.9em; }
+    .dataset-option .ds-desc { font-size: 0.75em; color: #888; }
+
+    .upload-area {
+      border: 2px dashed rgba(0, 255, 255, 0.3); border-radius: 10px;
+      padding: 25px; text-align: center; cursor: pointer; transition: all 0.3s;
+      margin-top: 10px; background: rgba(0, 20, 40, 0.3);
+    }
+    .upload-area:hover { border-color: #00ffff; background: rgba(0, 255, 255, 0.05); }
+    .upload-area i { font-size: 2em; color: #00ffff; margin-bottom: 10px; }
+    .upload-area p { color: #888; font-size: 0.9em; }
+    .upload-area .file-name { color: #00ffff; font-weight: 600; margin-top: 8px; }
+
+    .process-slider {
+      width: 100%; height: 8px; border-radius: 4px; background: rgba(0, 255, 255, 0.2);
+      outline: none; -webkit-appearance: none; margin: 10px 0;
+    }
+    .process-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: #00ffff; cursor: pointer; box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+    .process-value {
+      text-align: center; font-family: 'Space Mono', monospace;
+      font-size: 1.2em; color: #00ffff; margin-top: 10px;
+    }
+
+    .btn {
+      padding: 15px 30px; border: none; border-radius: 8px;
+      font-family: 'Orbitron', sans-serif; font-size: 1em; font-weight: 700;
+      text-transform: uppercase; cursor: pointer; transition: all 0.3s;
+      display: inline-flex; align-items: center; gap: 10px;
+    }
+    .btn-primary {
+      background: #00ffff; color: #0a0a0a;
+      box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+    }
+    .btn-primary:hover { background: #00cccc; transform: translateY(-2px); box-shadow: 0 6px 25px rgba(0, 255, 255, 0.4); }
+    .btn-secondary {
+      background: rgba(0, 255, 255, 0.1); border: 1px solid #00ffff; color: #00ffff;
+    }
+    .btn-secondary:hover { background: rgba(0, 255, 255, 0.2); }
+    .btn-danger {
+      background: rgba(255, 50, 50, 0.1); border: 1px solid #ff4444; color: #ff4444;
+    }
+    .btn-danger:hover { background: rgba(255, 50, 50, 0.2); }
+
+    .status-bar {
+      margin-top: 20px; padding: 15px; border-radius: 8px;
+      background: rgba(0, 255, 255, 0.05); border: 1px solid rgba(0, 255, 255, 0.2);
+      font-family: 'Space Mono', monospace; font-size: 0.9em; display: none;
+    }
+    .status-bar.running { display: block; border-color: #00ffff; color: #00ffff; }
+    .status-bar.success { display: block; border-color: #00ff88; color: #00ff88; background: rgba(0, 255, 136, 0.05); }
+    .status-bar.error { display: block; border-color: #ff4444; color: #ff4444; background: rgba(255, 68, 68, 0.05); }
+
+    .chart-container {
+      position: relative; height: 350px; margin-bottom: 25px;
+      background: rgba(0, 10, 20, 0.5); border-radius: 10px;
+      padding: 15px; border: 1px solid rgba(0, 255, 255, 0.1);
+    }
+
+    .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+    .metric-card {
+      background: rgba(0, 20, 40, 0.6); border: 1px solid rgba(0, 255, 255, 0.2);
+      border-radius: 10px; padding: 20px; text-align: center;
+      transition: all 0.3s;
+    }
+    .metric-card:hover { border-color: #00ffff; transform: translateY(-3px); box-shadow: 0 5px 20px rgba(0, 255, 255, 0.1); }
+    .metric-card i { font-size: 1.5em; color: #00ffff; margin-bottom: 10px; }
+    .metric-card .metric-value {
+      font-family: 'Orbitron', sans-serif; font-size: 1.8em; font-weight: 700;
+      color: #00ffff; margin: 10px 0;
+    }
+    .metric-card .metric-label { font-size: 0.85em; color: #888; text-transform: uppercase; }
+
+    .history-table {
+      width: 100%; border-collapse: collapse; font-size: 0.9em;
+    }
+    .history-table th {
+      background: rgba(0, 255, 255, 0.1); padding: 12px; text-align: left;
+      color: #00ffff; text-transform: uppercase; font-size: 0.8em;
+      border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+    }
+    .history-table td {
+      padding: 12px; border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+    }
+    .history-table tr:hover { background: rgba(0, 255, 255, 0.05); }
+
+    .terminal {
+      background: #050505; border: 1px solid rgba(0, 255, 255, 0.2); border-radius: 10px;
+      padding: 20px; font-family: 'Space Mono', monospace; font-size: 0.85em;
+      color: #00ff88; max-height: 400px; overflow-y: auto; margin-top: 20px;
+    }
+    .terminal-line { margin-bottom: 5px; }
+    .terminal-prompt { color: #00ffff; }
+    .terminal-output { color: #e0e0e0; }
+    .terminal-error { color: #ff4444; }
+
+    .tooltip {
+      position: relative; display: inline-block;
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden; width: 200px; background: rgba(0, 10, 20, 0.95);
+      color: #fff; text-align: center; border-radius: 6px;
+      padding: 8px; position: absolute; z-index: 1;
+      bottom: 125%; left: 50%; margin-left: -100px;
+      border: 1px solid #00ffff; font-size: 0.8em; opacity: 0; transition: opacity 0.3s;
+    }
+    .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+
+    .loading-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.8); display: none; align-items: center;
+      justify-content: center; z-index: 1000; backdrop-filter: blur(5px);
+    }
+    .loading-overlay.active { display: flex; }
+    .loading-spinner {
+      width: 60px; height: 60px; border: 4px solid rgba(0, 255, 255, 0.2);
+      border-top-color: #00ffff; border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      margin-top: 20px; color: #00ffff; font-family: 'Orbitron', sans-serif;
+      text-align: center;
+    }
+
+    .footer {
+      text-align: center; padding: 30px; color: #888; font-size: 0.85em;
+      border-top: 1px solid rgba(0, 255, 255, 0.1); margin-top: 40px;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard { grid-template-columns: 1fr; }
+      .results-grid { grid-template-columns: 1fr; }
+      .algo-selector { grid-template-columns: 1fr; }
+      .header { flex-direction: column; gap: 15px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cyber-grid"></div>
+  <div class="particles" id="particles"></div>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div>
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Processing MPI Execution...</div>
+    </div>
+  </div>
+
+  <header class="header">
+    <div class="header-left">
+      <div class="mpi-logo"><i class="fas fa-microchip"></i></div>
+      <div>
+        <div class="header-title">Calculs Parallèles · MPI</div>
+        <div class="header-subtitle">Parallel Computing & Machine Learning</div>
+      </div>
+    </div>
+    <div class="student-badge">
+      <i class="fas fa-user-graduate"></i> Merbouche Abdelatif · M1 HPC · USTHB
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="dashboard">
+      <div class="panel">
+        <div class="panel-header">
+          <i class="fas fa-sliders-h"></i>
+          <span class="panel-title">Configuration</span>
+        </div>
+
+        <div class="algo-selector">
+          <div class="algo-btn active" id="knnBtn" onclick="selectAlgo('knn')">
+            <i class="fas fa-search"></i>
+            <div class="algo-name">k-NN</div>
+            <div class="algo-desc">Classification</div>
+          </div>
+          <div class="algo-btn" id="kmeansBtn" onclick="selectAlgo('kmeans')">
+            <i class="fas fa-project-diagram"></i>
+            <div class="algo-name">K-Means</div>
+            <div class="algo-desc">Clustering</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label"><i class="fas fa-database"></i> Dataset</label>
+          <div class="dataset-selector" id="datasetSelector">
+            <div class="dataset-option active" id="dsClassification" onclick="selectDataset('dataset_classification.csv', 'classification')">
+              <i class="fas fa-tags"></i>
+              <div class="ds-name">Classification</div>
+              <div class="ds-desc">Iris dataset</div>
+            </div>
+            <div class="dataset-option" id="dsClustering" onclick="selectDataset('dataset_clustering.csv', 'clustering')">
+              <i class="fas fa-braille"></i>
+              <div class="ds-name">Clustering</div>
+              <div class="ds-desc">Concentric dataset</div>
+            </div>
+          </div>
+
+          <div class="upload-area" id="uploadArea" onclick="document.getElementById('datasetUpload').click()">
+            <input type="file" id="datasetUpload" accept=".csv" style="display:none" onchange="handleFileUpload(this)">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Click or drag & drop to upload your own CSV dataset</p>
+            <div class="file-name" id="uploadedFileName"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label tooltip">
+            <i class="fas fa-microchip"></i> MPI Processes
+            <span class="tooltiptext">Number of parallel processes for MPI execution</span>
+          </label>
+          <input type="range" class="process-slider" id="processSlider" min="1" max="20" value="4" oninput="updateProcessValue(this.value)">
+          <div class="process-value" id="processValue">4 processes</div>
+        </div>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-primary" id="runBtn" onclick="runExperiment()">
+            <i class="fas fa-play"></i> Run Experiment
+          </button>
+          <button class="btn btn-secondary" id="resetBtn" onclick="resetAll()">
+            <i class="fas fa-undo"></i> Reset
+          </button>
+          <button class="btn btn-danger" id="clearBtn" onclick="clearHistory()">
+            <i class="fas fa-trash"></i> Clear History
+          </button>
+        </div>
+
+        <div class="status-bar" id="statusBar"></div>
+
+        <div class="terminal" id="terminal">
+          <div class="terminal-line">
+            <span class="terminal-prompt">$</span> <span class="terminal-output">Ready for MPI execution...</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="panel-header">
+            <i class="fas fa-chart-line"></i>
+            <span class="panel-title">Performance Analysis</span>
+          </div>
+          <div class="chart-container">
+            <canvas id="performanceChart"></canvas>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+            <div class="chart-container" style="height: 200px;">
+              <canvas id="speedupChart"></canvas>
+            </div>
+            <div class="chart-container" style="height: 200px;">
+              <canvas id="efficiencyChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 20px;">
+          <div class="panel-header">
+            <i class="fas fa-tachometer-alt"></i>
+            <span class="panel-title">Results</span>
+          </div>
+          <div class="results-grid" id="resultsGrid">
+            <div class="metric-card">
+              <i class="fas fa-clock"></i>
+              <div class="metric-value" id="tsValue">-</div>
+              <div class="metric-label">Sequential Time (Ts)</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-bolt"></i>
+              <div class="metric-value" id="tpValue">-</div>
+              <div class="metric-label">Parallel Time (Tp)</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-rocket"></i>
+              <div class="metric-value" id="speedupValue">-</div>
+              <div class="metric-label">Speedup (S)</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-percentage"></i>
+              <div class="metric-value" id="efficiencyValue">-</div>
+              <div class="metric-label">Efficiency (E)</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-bullseye"></i>
+              <div class="metric-value" id="metricValue">-</div>
+              <div class="metric-label" id="metricLabel">Accuracy / Iterations</div>
+            </div>
+            <div class="metric-card">
+              <i class="fas fa-microchip"></i>
+              <div class="metric-value" id="processesValue">-</div>
+              <div class="metric-label">Processes Used</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 20px;">
+          <div class="panel-header">
+            <i class="fas fa-history"></i>
+            <span class="panel-title">Execution History</span>
+          </div>
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Dataset</th>
+                <th>Processes</th>
+                <th>Ts (s)</th>
+                <th>Tp (s)</th>
+                <th>Speedup</th>
+                <th>Efficiency</th>
+                <th>Metric</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p><i class="fas fa-university"></i> Université des Sciences et de la Technologie Houari Boumediene (USTHB)</p>
+    <p style="margin-top: 5px; color: #00ffff;">Master 1 High Performance Computing (HPC) · 2025/2026</p>
+    <p style="margin-top: 5px; font-size: 0.8em;">Supervised by: Mrs. Baba Ali · Parallel Computing Course</p>
+  </footer>
+
+  <script>
+    // ─── Configuration ───────────────────────────────────────────
+    let selectedAlgo = 'knn';
+    let selectedDataset = 'dataset_classification.csv';
+    let selectedDatasetType = 'classification';
+    let selectedProcesses = 4;
+    let uploadedFileData = null;
+    let uploadedFileName = '';
+    let experimentHistory = [];
+    let performanceChart, speedupChart, efficiencyChart;
+
+    // ─── Particle Background ─────────────────────────────────────
+    function createParticles() {
+      const container = document.getElementById('particles');
+      for (let i = 0; i < 50; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.top = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 10 + 's';
+        particle.style.animationDuration = (5 + Math.random() * 10) + 's';
+        container.appendChild(particle);
+      }
+    }
+
+    // ─── Algorithm Selection ─────────────────────────────────────
+    function selectAlgo(algo) {
+      selectedAlgo = algo;
+      document.querySelectorAll('.algo-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(algo + 'Btn').classList.add('active');
+
+      // Auto-select appropriate dataset based on algorithm
+      if (algo === 'knn') {
+        selectDataset('dataset_classification.csv', 'classification');
+      } else {
+        selectDataset('dataset_clustering.csv', 'clustering');
+      }
+
+      logTerminal(`Algorithm selected: ${algo.toUpperCase()}`);
+    }
+
+    // ─── Dataset Selection ───────────────────────────────────────
+    function selectDataset(dataset, type) {
+      selectedDataset = dataset;
+      selectedDatasetType = type;
+      uploadedFileData = null;
+      uploadedFileName = '';
+      document.getElementById('uploadedFileName').textContent = '';
+
+      document.querySelectorAll('.dataset-option').forEach(opt => opt.classList.remove('active'));
+      if (dataset === 'dataset_classification.csv') {
+        document.getElementById('dsClassification').classList.add('active');
+      } else if (dataset === 'dataset_clustering.csv') {
+        document.getElementById('dsClustering').classList.add('active');
+      }
+
+      logTerminal(`Dataset selected: ${dataset}`);
+    }
+
+    // ─── File Upload ─────────────────────────────────────────────
+    function handleFileUpload(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      if (!file.name.endsWith('.csv')) {
+        showStatus('Please upload a CSV file.', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        uploadedFileData = e.target.result;
+        uploadedFileName = file.name;
+        selectedDataset = file.name;
+        document.getElementById('uploadedFileName').textContent = file.name;
+        document.querySelectorAll('.dataset-option').forEach(opt => opt.classList.remove('active'));
+        logTerminal(`Uploaded custom dataset: ${file.name}`);
+        showStatus(`Dataset "${file.name}" loaded successfully.`, 'success');
+      };
+      reader.readAsText(file);
+    }
+
+    // ─── Process Slider ────────────────────────────────────────
+    function updateProcessValue(val) {
+      selectedProcesses = parseInt(val);
+      document.getElementById('processValue').textContent = val + ' processes';
+    }
+
+    // ─── Terminal ──────────────────────────────────────────────
+    function logTerminal(text, type = 'output') {
+      const terminal = document.getElementById('terminal');
+      const line = document.createElement('div');
+      line.className = 'terminal-line';
+      const timestamp = new Date().toLocaleTimeString();
+      const promptSpan = document.createElement('span');
+      promptSpan.className = 'terminal-prompt';
+      promptSpan.textContent = `[${timestamp}] $`;
+      const outputSpan = document.createElement('span');
+      outputSpan.className = type === 'error' ? 'terminal-error' : 'terminal-output';
+      outputSpan.textContent = ' ' + text;
+      line.appendChild(promptSpan);
+      line.appendChild(outputSpan);
+      terminal.appendChild(line);
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    // ─── Status ──────────────────────────────────────────────────
+    function showStatus(message, type) {
+      const statusBar = document.getElementById('statusBar');
+      statusBar.textContent = message;
+      statusBar.className = 'status-bar ' + type;
+    }
+
+    // ─── Run Experiment ──────────────────────────────────────────
+    async function runExperiment() {
+      const runBtn = document.getElementById('runBtn');
+      runBtn.disabled = true;
+      document.getElementById('loadingOverlay').classList.add('active');
+      showStatus('Running MPI experiment...', 'running');
+      logTerminal(`Starting ${selectedAlgo.toUpperCase()} with ${selectedProcesses} processes...`);
+
+      try {
+        const payload = {
+          algorithm: selectedAlgo,
+          dataset: selectedDataset,
+          processes: selectedProcesses
+        };
+
+        // If a custom file was uploaded, include its content
+        if (uploadedFileData) {
+          payload.dataset_content = uploadedFileData;
+          payload.dataset_filename = uploadedFileName;
+        }
+
+        const response = await fetch('/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          showStatus(data.error, 'error');
+          logTerminal('Error: ' + data.error, 'error');
+          return;
+        }
+
+        updateResults(data);
+        addToHistory(data);
+        updateCharts();
+        showStatus('Experiment completed successfully!', 'success');
+        logTerminal(`Completed: Ts=${data.ts.toFixed(4)}s, Tp=${data.tp.toFixed(4)}s, Speedup=${data.speedup.toFixed(2)}`);
+      } catch (error) {
+        showStatus('Connection error: ' + error.message, 'error');
+        logTerminal('Connection error: ' + error.message, 'error');
+      } finally {
+        runBtn.disabled = false;
+        document.getElementById('loadingOverlay').classList.remove('active');
+      }
+    }
+
+    // ─── Update Results ──────────────────────────────────────────
+    function updateResults(data) {
+      document.getElementById('tsValue').textContent = data.ts.toFixed(4) + 's';
+      document.getElementById('tpValue').textContent = data.tp.toFixed(4) + 's';
+      document.getElementById('speedupValue').textContent = data.speedup.toFixed(2) + 'x';
+      document.getElementById('efficiencyValue').textContent = data.efficiency.toFixed(1) + '%';
+      document.getElementById('processesValue').textContent = data.processes;
+
+      const isKNN = data.algorithm === 'knn';
+      document.getElementById('metricLabel').textContent = isKNN ? 'Accuracy' : 'Iterations';
+      document.getElementById('metricValue').textContent = isKNN
+        ? (data.accuracy ? data.accuracy.toFixed(2) + '%' : '-')
+        : (data.iterations ? data.iterations : '-');
+    }
+
+    // ─── History ─────────────────────────────────────────────────
+    function addToHistory(data) {
+      experimentHistory.push(data);
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const tbody = document.getElementById('historyBody');
+      tbody.innerHTML = '';
+      experimentHistory.slice().reverse().forEach(exp => {
+        const isKNN = exp.algorithm === 'knn';
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><strong>${exp.algorithm.toUpperCase()}</strong></td>
+          <td>${exp.dataset}</td>
+          <td>${exp.processes}</td>
+          <td>${exp.ts.toFixed(4)}s</td>
+          <td>${exp.tp.toFixed(4)}s</td>
+          <td><strong style="color: #00ffff;">${exp.speedup.toFixed(2)}x</strong></td>
+          <td>${exp.efficiency.toFixed(1)}%</td>
+          <td>${isKNN ? (exp.accuracy ? exp.accuracy.toFixed(2) + '%' : '-') : (exp.iterations || '-')}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function clearHistory() {
+      experimentHistory = [];
+      renderHistory();
+      logTerminal('Execution history cleared.');
+      showStatus('History cleared.', 'success');
+    }
+
+    // ─── Reset All ───────────────────────────────────────────────
+    function resetAll() {
+      experimentHistory = [];
+      renderHistory();
+      uploadedFileData = null;
+      uploadedFileName = '';
+      document.getElementById('uploadedFileName').textContent = '';
+
+      // Reset charts
+      if (performanceChart) {
+        performanceChart.data.labels = [];
+        performanceChart.data.datasets.forEach(ds => ds.data = []);
+        performanceChart.update();
+      }
+      if (speedupChart) {
+        speedupChart.data.labels = [];
+        speedupChart.data.datasets[0].data = [];
+        speedupChart.update();
+      }
+      if (efficiencyChart) {
+        efficiencyChart.data.labels = [];
+        efficiencyChart.data.datasets[0].data = [];
+        efficiencyChart.update();
+      }
+
+      // Reset result cards
+      document.getElementById('tsValue').textContent = '-';
+      document.getElementById('tpValue').textContent = '-';
+      document.getElementById('speedupValue').textContent = '-';
+      document.getElementById('efficiencyValue').textContent = '-';
+      document.getElementById('metricValue').textContent = '-';
+      document.getElementById('processesValue').textContent = '-';
+
+      // Reset algorithm and dataset to defaults
+      selectAlgo('knn');
+      updateProcessValue(4);
+      document.getElementById('processSlider').value = 4;
+
+      logTerminal('All settings and results reset to defaults.');
+      showStatus('Reset complete.', 'success');
+    }
+
+    // ─── Charts ──────────────────────────────────────────────────
+    function initCharts() {
+      const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#e0e0e0', font: { family: 'Exo 2' } } }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(0, 255, 255, 0.1)' }, ticks: { color: '#888', font: { family: 'Exo 2' } } },
+          y: { grid: { color: 'rgba(0, 255, 255, 0.1)' }, ticks: { color: '#888', font: { family: 'Exo 2' } } }
+        }
+      };
+
+      performanceChart = new Chart(document.getElementById('performanceChart'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            { label: 'Sequential Time (Ts)', data: [], borderColor: '#ff6b6b', backgroundColor: 'rgba(255, 107, 107, 0.1)', borderWidth: 2, tension: 0.4, fill: true },
+            { label: 'Parallel Time (Tp)', data: [], borderColor: '#00ffff', backgroundColor: 'rgba(0, 255, 255, 0.1)', borderWidth: 2, tension: 0.4, fill: true }
+          ]
+        },
+        options: {
+          ...commonOptions,
+          plugins: {
+            ...commonOptions.plugins,
+            title: { display: true, text: 'Execution Time vs Number of Processes', color: '#00ffff', font: { family: 'Orbitron', size: 14 } }
+          }
+        }
+      });
+
+      speedupChart = new Chart(document.getElementById('speedupChart'), {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{ label: 'Speedup', data: [], backgroundColor: 'rgba(0, 255, 255, 0.6)', borderColor: '#00ffff', borderWidth: 1 }]
+        },
+        options: {
+          ...commonOptions,
+          plugins: {
+            ...commonOptions.plugins,
+            title: { display: true, text: 'Speedup', color: '#00ffff', font: { family: 'Orbitron', size: 12 } }
+          }
+        }
+      });
+
+      efficiencyChart = new Chart(document.getElementById('efficiencyChart'), {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{ label: 'Efficiency %', data: [], borderColor: '#00ff88', backgroundColor: 'rgba(0, 255, 136, 0.1)', borderWidth: 2, tension: 0.4, fill: true }]
+        },
+        options: {
+          ...commonOptions,
+          plugins: {
+            ...commonOptions.plugins,
+            title: { display: true, text: 'Efficiency', color: '#00ffff', font: { family: 'Orbitron', size: 12 } }
+          }
+        }
+      });
+    }
+
+    function updateCharts() {
+      const labels = experimentHistory.map(e => e.processes + 'p');
+      const tsData = experimentHistory.map(e => e.ts);
+      const tpData = experimentHistory.map(e => e.tp);
+      const speedupData = experimentHistory.map(e => e.speedup);
+      const efficiencyData = experimentHistory.map(e => e.efficiency);
+
+      performanceChart.data.labels = labels;
+      performanceChart.data.datasets[0].data = tsData;
+      performanceChart.data.datasets[1].data = tpData;
+      performanceChart.update();
+
+      speedupChart.data.labels = labels;
+      speedupChart.data.datasets[0].data = speedupData;
+      speedupChart.update();
+
+      efficiencyChart.data.labels = labels;
+      efficiencyChart.data.datasets[0].data = efficiencyData;
+      efficiencyChart.update();
+    }
+
+    // ─── Drag & Drop ─────────────────────────────────────────────
+    const uploadArea = document.getElementById('uploadArea');
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = '#00ffff';
+      uploadArea.style.background = 'rgba(0, 255, 255, 0.1)';
+    });
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.style.borderColor = 'rgba(0, 255, 255, 0.3)';
+      uploadArea.style.background = 'rgba(0, 20, 40, 0.3)';
+    });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.style.borderColor = 'rgba(0, 255, 255, 0.3)';
+      uploadArea.style.background = 'rgba(0, 20, 40, 0.3)';
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        const input = document.getElementById('datasetUpload');
+        input.files = files;
+        handleFileUpload(input);
+      }
+    });
+
+    // ─── Init ────────────────────────────────────────────────────
+    window.onload = function() {
+      createParticles();
+      initCharts();
+      logTerminal('System initialized. Ready.');
+      selectAlgo('knn');
+    };
+  </script>
+</body>
+</html>

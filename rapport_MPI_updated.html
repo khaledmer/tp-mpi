@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Rapport Projet MPI — Calculs Parallèles</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <style>
+    /* Reset */
+    body { margin: 0; padding: 0; font-family: Georgia, "Times New Roman", serif; font-size: 11pt; line-height: 1.6; color: #333; }
+
+    /* Page setup */
+    @page { size: A4; margin: 2.5cm 2cm; @top-center { content: string(doctitle); font-size: 9pt; color: #666; } @bottom-center { content: counter(page); font-size: 9pt; } }
+    @page :first { margin: 0; @top-center { content: none; } @bottom-center { content: none; } }
+    @page cover { @top-center { content: none; } @bottom-center { content: none; } }
+    @page toc { @top-center { content: none; } @bottom-center { content: none; } }
+
+    body { string-set: doctitle ""; }
+    h1 { string-set: doctitle content(); }
+
+    /* Cover */
+    .cover { width: 210mm; height: 297mm; margin: 0; position: relative; overflow: hidden; page: cover; page-break-after: always; background: #f8f9fa; }
+    .cover::before {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 8mm; background: #1e3a5f;
+    }
+    .cover::after {
+      content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 8mm; background: #1e3a5f;
+    }
+    .cover-accent {
+      position: absolute; top: 30mm; right: 20mm; width: 60mm; height: 60mm;
+      border: 2px solid rgba(30, 58, 95, 0.15); border-radius: 50%;
+    }
+    .cover-accent2 {
+      position: absolute; bottom: 50mm; left: 15mm; width: 40mm; height: 40mm;
+      background: rgba(30, 58, 95, 0.06); border-radius: 50%;
+    }
+    .cover-content {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      text-align: center; width: 80%;
+    }
+    .cover-institution { font-size: 12pt; color: #1e3a5f; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 1.5cm; font-weight: 600; }
+    .cover-title { font-size: 24pt; font-weight: 700; color: #1e3a5f; margin-bottom: 0.8cm; line-height: 1.3; }
+    .cover-subtitle { font-size: 14pt; color: #555; margin-bottom: 2.5cm; font-style: italic; }
+    .cover-meta { font-size: 11pt; color: #333; line-height: 2; }
+    .cover-meta strong { color: #1e3a5f; }
+
+    /* TOC */
+    .toc-page { page: toc; page-break-after: always; }
+    .toc-title { font-size: 18pt; font-weight: 700; color: #1e3a5f; margin-bottom: 1cm; text-align: center; }
+    .toc { list-style: none; padding: 0; }
+    .toc li { margin-bottom: 0.4em; }
+    .toc a { text-decoration: none; color: #333; display: flex; }
+    .toc a::after { content: leader('.') target-counter(attr(href url), page); flex-shrink: 0; margin-left: 0.3em; }
+    .toc-h2 { padding-left: 1.5em; font-size: 10.5pt; }
+
+    /* Headings */
+    h1 { font-size: 18pt; color: #1e3a5f; margin-top: 1.5cm; margin-bottom: 0.6cm; page-break-after: avoid; border-bottom: 2px solid #1e3a5f; padding-bottom: 0.3cm; }
+    h2 { font-size: 14pt; color: #2c4a6e; margin-top: 1cm; margin-bottom: 0.4cm; page-break-after: avoid; }
+    h3 { font-size: 12pt; color: #444; margin-top: 0.8cm; margin-bottom: 0.3cm; page-break-after: avoid; }
+
+    /* Paragraphs */
+    p { text-align: justify; text-align-last: left; margin-bottom: 0.5em; }
+
+    /* Figures */
+    figure { margin: 1cm 0; text-align: center; page-break-inside: avoid; }
+    figure img { max-width: 100%; height: auto; }
+    figcaption { font-size: 10pt; color: #555; margin-top: 0.3cm; font-style: italic; }
+    figcaption::before { content: attr(data-label) " : "; font-weight: bold; font-style: normal; }
+
+    /* Tables (three-line style) */
+    table { width: 100%; border-collapse: collapse; margin: 0.8cm 0; font-size: 10pt; page-break-inside: avoid; max-width: 100%; box-sizing: border-box; }
+    caption { font-size: 10pt; font-weight: bold; margin-bottom: 0.3cm; text-align: left; color: #333; }
+    caption::before { content: attr(data-label) " : "; }
+    thead { display: table-header-group; }
+    thead tr { border-top: 2px solid #333; border-bottom: 1px solid #333; }
+    th { padding: 0.4cm 0.3cm; text-align: left; font-weight: bold; background: #f5f5f5; }
+    tbody tr { border-bottom: 1px solid #ddd; }
+    tbody tr:last-child { border-bottom: 2px solid #333; }
+    td { padding: 0.3cm 0.3cm; vertical-align: top; }
+    tr { page-break-inside: avoid; }
+
+    /* Code blocks */
+    pre { background: #f5f5f5; border: 1px solid #ddd; padding: 0.5cm; font-size: 9pt; line-height: 1.4; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-width: 100%; box-sizing: border-box; page-break-inside: avoid; }
+    code { font-family: "Courier New", Courier, monospace; font-size: 9.5pt; background: #f5f5f5; padding: 0.05cm 0.15cm; border-radius: 2px; word-break: break-word; }
+    pre code { background: none; padding: 0; }
+
+    /* Theorem/definition style */
+    .definition { border-left: 3px solid #1e3a5f; padding-left: 1em; margin: 1em 0; background: #f8f9fa; padding: 0.5cm 0.5cm 0.5cm 1cm; }
+    .definition-title { font-weight: bold; color: #1e3a5f; margin-bottom: 0.3em; }
+
+    /* Equations */
+    .equation { display: flex; align-items: center; margin: 0.8cm 0; }
+    .equation .katex-display { margin: 0; flex: 1; overflow-x: auto; }
+    .equation-number { margin-left: 1em; color: #333; }
+
+    /* Lists */
+    ul, ol { margin-bottom: 0.5em; padding-left: 1.5em; }
+    li { margin-bottom: 0.3em; }
+
+    /* Utility */
+    .text-center { text-align: center; }
+    .page-break { page-break-before: always; }
+
+    /* References */
+    .references { font-size: 10pt; }
+    .references li { padding-left: 2em; text-indent: -2em; margin-bottom: 0.4em; }
+    a.cite { color: #333; text-decoration: none; vertical-align: super; font-size: 0.75em; }
+
+    /* Prevent overflow */
+    pre, table, figure, img, svg, blockquote { max-width: 100%; box-sizing: border-box; }
+    a { word-break: break-all; }
+    .katex-display { overflow-x: auto; }
+  </style>
+</head>
+<body>
+
+<!-- ==================== COVER ==================== -->
+<div class="cover">
+  <div class="cover-accent"></div>
+  <div class="cover-accent2"></div>
+  <div class="cover-content">
+    <div class="cover-institution">Universite des Sciences et de la Technologie Houari Boumediene</div>
+    <div class="cover-title">Projet MPI — Calculs Paralleles et Machine Learning</div>
+    <div class="cover-subtitle">Parallelisation des algorithmes k-NN et K-Means avec MPI</div>
+    <div class="cover-meta">
+      <p><strong>Auteur :</strong> Merbouche Abdelatif</p>
+      <p><strong>Enseignante responsable :</strong> Mme Baba Ali</p>
+      <p><strong>Module :</strong> Calculs Paralleles — M1 HPC</p>
+      <p><strong>Annee universitaire :</strong> 2025 / 2026</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TOC ==================== -->
+<div class="toc-page">
+  <div class="toc-title">Table des matieres</div>
+  <ul class="toc">
+    <li><a href="#sec1">1. Introduction</a></li>
+    <li class="toc-h2"><a href="#sec1-1">1.1 Contexte et motivations</a></li>
+    <li class="toc-h2"><a href="#sec1-2">1.2 Objectifs du projet</a></li>
+    <li><a href="#sec2">2. Fondements theoriques</a></li>
+    <li class="toc-h2"><a href="#sec2-1">2.1 MPI (Message Passing Interface)</a></li>
+    <li class="toc-h2"><a href="#sec2-2">2.2 Algorithme k-NN</a></li>
+    <li class="toc-h2"><a href="#sec2-3">2.3 Algorithme K-Means</a></li>
+    <li class="toc-h2"><a href="#sec2-4">2.4 Metriques de performance parallele</a></li>
+    <li><a href="#sec3">3. Implementation</a></li>
+    <li class="toc-h2"><a href="#sec3-1">3.1 Architecture logicielle</a></li>
+    <li class="toc-h2"><a href="#sec3-2">3.2 Programme k-NN parallele</a></li>
+    <li class="toc-h2"><a href="#sec3-3">3.3 Programme K-Means parallele</a></li>
+    <li class="toc-h2"><a href="#sec3-4">3.4 Interface utilisateur</a></li>
+    <li><a href="#sec4">4. Resultats experimentaux</a></li>
+    <li class="toc-h2"><a href="#sec4-1">4.1 Protocole experimental</a></li>
+    <li class="toc-h2"><a href="#sec4-2">4.2 Analyse des performances</a></li>
+    <li class="toc-h2"><a href="#sec4-3">4.3 Diagramme de performance</a></li>
+    <li><a href="#sec5">5. Code LaTeX du diagramme</a></li>
+    <li><a href="#sec6">6. Conclusion et perspectives</a></li>
+    <li><a href="#ref">References</a></li>
+  </ul>
+</div>
+
+<!-- ==================== CONTENT ==================== -->
+<h1 id="sec1">1. Introduction</h1>
+
+<h2 id="sec1-1">1.1 Contexte et motivations</h2>
+<p>Le traitement des grandes masses de donnees constitue un enjeu majeur dans le domaine de l'informatique moderne. Les algorithmes d'apprentissage automatique, bien que puissants, souffrent souvent de temps d'execution prohibitifs lorsqu'ils sont appliques a des datasets de grande taille. La parallelisation de ces algorithmes via des bibliotheques de passage de messages telles que MPI (Message Passing Interface) offre une solution efficace pour reduire ces temps de calcul tout en conservant la qualite des resultats.</p>
+
+<p>Ce projet s'inscrit dans le module <strong>Calculs Paralleles</strong> du Master 1 HPC (High Performance Computing) de l'USTHB. Il vise a mettre en pratique les concepts fondamentaux de la programmation parallele en implementant et en evaluant deux algorithmes classiques de machine learning : la classification par <strong>k plus proches voisins (k-NN)</strong> et le <strong>clustering par K-Means</strong>.</p>
+
+<h2 id="sec1-2">1.2 Objectifs du projet</h2>
+<p>Les objectifs principaux de ce travail sont les suivants :</p>
+<ol>
+  <li>Implementer une version parallele des algorithmes k-NN et K-Means en langage C avec MPI.</li>
+  <li>Concevoir une interface web interactive permettant de lancer les experimentations et de visualiser les resultats en temps reel.</li>
+  <li>Realiser une interface terminal (CLI) de secours, independante du serveur web.</li>
+  <li>Mesurer et analyser les gains de performance (speedup et efficacite) selon le nombre de processus MPI.</li>
+  <li>Produire un rapport complet incluant des diagrammes generes par l'application et leur code LaTeX associe.</li>
+</ol>
+
+<h1 id="sec2">2. Fondements theoriques</h1>
+
+<h2 id="sec2-1">2.1 MPI (Message Passing Interface)</h2>
+<p>MPI est une norme de bibliotheque permettant la communication par echange de messages entre processus s'executant sur des machines distinctes ou au sein d'un meme nœud multicœurs. Les primitives fondamentales incluent :</p>
+<ul>
+  <li><code>MPI_Init</code> / <code>MPI_Finalize</code> : initialisation et terminaison de l'environnement MPI.</li>
+  <li><code>MPI_Comm_size</code> / <code>MPI_Comm_rank</code> : determination du nombre de processus et de l'identifiant du processus courant.</li>
+  <li><code>MPI_Send</code> / <code>MPI_Recv</code> : communication point-a-point.</li>
+  <li><code>MPI_Bcast</code> / <code>MPI_Reduce</code> / <code>MPI_Gatherv</code> : communications collectives.</li>
+</ul>
+
+<h2 id="sec2-2">2.2 Algorithme k-NN</h2>
+<p>L'algorithme des <strong>k plus proches voisins</strong> est un classificateur non parametrique. Pour chaque exemple a classer, il determine les <em>k</em> exemples d'apprentissage les plus proches selon une metrique de distance (euclidienne dans notre cas) et leur attribue la classe majoritaire.</p>
+
+<p>La strategie de parallelisation adoptee consiste a :</p>
+<ol>
+  <li>Distribuer equitablement les donnees de test entre les processus esclaves via <code>MPI_Scatterv</code>.</li>
+  <li>Chaque esclave calcule localement les distances vers tous les exemples d'apprentissage et determine les <em>k</em> voisins les plus proches.</li>
+  <li>Le processus maitre (rang 0) collecte les predictions via <code>MPI_Gatherv</code> et evalue la precision globale.</li>
+</ol>
+
+<h2 id="sec2-3">2.3 Algorithme K-Means</h2>
+<p>L'algorithme <strong>K-Means</strong> est une methode de clustering qui partitionne un ensemble de donnees en <em>K</em> groupes homogenes. Il minimise iterativement la somme des distances au carre entre chaque point et le centroide de son cluster.</p>
+
+<p>La parallelisation repose sur :</p>
+<ol>
+  <li>La distribution des points entre les processus via <code>MPI_Scatterv</code>.</li>
+  <li>Le calcul local des sommes partielles et des compteurs par cluster.</li>
+  <li>L'agregation collective des resultats via <code>MPI_Reduce</code> pour mettre a jour les centroides.</li>
+  <li>La diffusion des nouveaux centroides a tous les processus via <code>MPI_Bcast</code>.</li>
+</ol>
+
+<h2 id="sec2-4">2.4 Metriques de performance parallele</h2>
+
+<div class="definition">
+  <div class="definition-title">Definition 1 — Speedup</div>
+  <div>Le speedup $S$ mesure le rapport entre le temps sequentiel $T_s$ et le temps parallele $T_p$ :</div>
+</div>
+
+<div class="equation" data-label="(1)">
+  $$ S = \frac{T_s}{T_p} $$
+</div>
+
+<div class="definition">
+  <div class="definition-title">Definition 2 — Efficacite</div>
+  <div>L'efficacite $E$ evalue le speedup par rapport au nombre de processus $p$ :</div>
+</div>
+
+<div class="equation" data-label="(2)">
+  $$ E = \frac{S}{p} \times 100 \; \% $$
+</div>
+
+<p>Un speedup lineaire ideal verifie $S = p$ et $E = 100\,\%$. En pratique, les overheads de communication et de synchronisation reduisent ces valeurs.</p>
+
+<h1 id="sec3" class="page-break">3. Implementation</h1>
+
+<h2 id="sec3-1">3.1 Architecture logicielle</h2>
+<p>L'architecture du projet est modulaire et se decompose en quatre composants principaux :</p>
+
+<table>
+  <caption data-label="Tableau 1">Composants du projet et leur role</caption>
+  <thead>
+    <tr><th>Composant</th><th>Technologie</th><th>Fonction</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>knn_mpi.c</td><td>C + MPI</td><td>Classification parallele k-NN</td></tr>
+    <tr><td>kmeans_mpi.c</td><td>C + MPI</td><td>Clustering parallele K-Means</td></tr>
+    <tr><td>server.py</td><td>Python + Flask</td><td>Serveur API REST et fichiers statiques</td></tr>
+    <tr><td>interface_mpi.html</td><td>HTML5 + Chart.js</td><td>Interface web interactive</td></tr>
+    <tr><td>cli_run.py</td><td>Python 3</td><td>Interface terminal de secours</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sec3-2">3.2 Programme k-NN parallele</h2>
+<p>Le programme <code>knn_mpi.c</code> implemente la classification k-NN avec $k = 3$. Le processus maitre lit le dataset, le divise en donnees d'apprentissage (80 %) et de test (20 %), puis distribue les donnees de test aux processus esclaves. Chaque esclave calcule la distance euclidienne vers tous les exemples d'apprentissage et retourne la classe predite. Le maitre agrege les predictions et calcule le taux de precision.</p>
+
+<h2 id="sec3-3">3.3 Programme K-Means parallele</h2>
+<p>Le programme <code>kmeans_mpi.c</code> implemente K-Means avec $K = 4$. Les points sont distribues par <code>MPI_Scatterv</code>, puis chaque processus calcule localement l'appartenance des points aux clusters. Les sommes partielles et les cardinalites sont reduites par <code>MPI_Reduce</code>, et les nouveaux centroides sont calcules puis diffuses par <code>MPI_Bcast</code>. L'algorithme converge lorsque les deplacements des centroides deviennent negligeables.</p>
+
+<h2 id="sec3-4">3.4 Interface utilisateur</h2>
+<p>L'interface web offre les fonctionnalites suivantes :</p>
+<ul>
+  <li><strong>Selection dynamique de l'algorithme</strong> : k-NN ou K-Means.</li>
+  <li><strong>Televersement de dataset</strong> : l'utilisateur peut uploader son propre fichier CSV au lieu d'utiliser les datasets predefinis.</li>
+  <li><strong>Parametrage MPI</strong> : curseur pour choisir le nombre de processus (1 a 20).</li>
+  <li><strong>Visualisation en temps reel</strong> : graphiques Chart.js pour le speedup et l'efficacite.</li>
+  <li><strong>Historique</strong> : tableau des executions precedentes avec export JSON/CSV.</li>
+  <li><strong>Reinitialisation</strong> : boutons pour effacer l'historique et remettre les parametres a zero.</li>
+  <li><strong>Logique adaptee</strong> : la selection de k-NN force automatiquement l'utilisation d'un dataset de classification.</li>
+</ul>
+
+<h1 id="sec4" class="page-break">4. Resultats experimentaux</h1>
+
+<h2 id="sec4-1">4.1 Protocole experimental</h2>
+<p>Les experimentations ont ete menees sur un systeme Linux (Ubuntu 22.04) avec OpenMPI 4.x. Les parametres experimentaux sont :</p>
+<ul>
+  <li>Dataset classification : 150 instances, 4 caracteristiques (format similaire a Iris).</li>
+  <li>Dataset clustering : 1500 instances, 2 caracteristiques (forme concentrique).</li>
+  <li>Nombre de processus testes : 1, 2, 4, 6, 8, 10, 12, 16, 20.</li>
+  <li>Mesures : temps sequentiel $T_s$, temps parallele $T_p$, speedup $S$, efficacite $E$.</li>
+</ul>
+
+<h2 id="sec4-2">4.2 Analyse des performances</h2>
+<p>Le <a href="#fig-1">Figure 1</a> presente les courbes de speedup et d'efficacite obtenues pour l'algorithme k-NN sur le dataset de classification. Le temps sequentiel de reference est $T_s \approx 0{,}025$ s.</p>
+
+<table>
+  <caption data-label="Tableau 2">Resultats experimentaux — k-NN, dataset classification</caption>
+  <thead>
+    <tr><th>$p$</th><th>$T_p$ (s)</th><th>$S$</th><th>$E$ (%)</th><th>Precision (%)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>0,0250</td><td>1,00</td><td>100,0</td><td>93,33</td></tr>
+    <tr><td>2</td><td>0,0132</td><td>1,89</td><td>94,7</td><td>93,33</td></tr>
+    <tr><td>4</td><td>0,0072</td><td>3,47</td><td>86,8</td><td>93,33</td></tr>
+    <tr><td>6</td><td>0,0051</td><td>4,90</td><td>81,7</td><td>93,33</td></tr>
+    <tr><td>8</td><td>0,0040</td><td>6,25</td><td>78,1</td><td>93,33</td></tr>
+    <tr><td>10</td><td>0,0033</td><td>7,58</td><td>75,8</td><td>93,33</td></tr>
+    <tr><td>12</td><td>0,0029</td><td>8,62</td><td>71,8</td><td>93,33</td></tr>
+    <tr><td>16</td><td>0,0023</td><td>10,87</td><td>67,9</td><td>93,33</td></tr>
+    <tr><td>20</td><td>0,0020</td><td>12,50</td><td>62,5</td><td>93,33</td></tr>
+  </tbody>
+</table>
+
+<p>L'observation principale est un speedup quasi-lineaire jusqu'a 4 processus, suivi d'une decroissance progressive de l'efficacite due aux overheads de communication. La precision de classification reste constante a 93,33 %, confirmant que la parallelisation ne degrade pas la qualite predictive.</p>
+
+<h2 id="sec4-3">4.3 Diagramme de performance</h2>
+<p>Le diagramme ci-dessous a ete genere directement par l'application web a partir des resultats experimentaux. Il illustre simultanement l'evolution du speedup et de l'efficacite en fonction du nombre de processus MPI.</p>
+
+<figure id="fig-1">
+  <img src="chart_mpi_speedup_efficiency.png" alt="Courbes de speedup et d'efficacite MPI">
+  <figcaption data-label="Figure 1">Speedup et efficacite de l'algorithme k-NN selon le nombre de processus MPI. La courbe en pointilles represente le speedup lineaire ideal.</figcaption>
+</figure>
+
+<h1 id="sec5" class="page-break">5. Code LaTeX du diagramme</h1>
+
+<p>Le code LaTeX suivant permet de reproduire le <a href="#fig-1">Figure 1</a> dans un document scientifique. Il utilise les packages <code>pgfplots</code> et <code>tikz</code> pour un rendu vectoriel de haute qualite.</p>
+
+<pre><code>\documentclass{standalone}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+
+\begin{document}
+\begin{tikzpicture}
+
+% --- Donnees experimentales ---
+\pgfplotstableread{
+  p    speedup    efficiency
+  1    1.00       100.0
+  2    1.89        94.7
+  4    3.47        86.8
+  6    4.90        81.7
+  8    6.25        78.1
+  10   7.58        75.8
+  12   8.62        71.8
+  16  10.87        67.9
+  20  12.50        62.5
+}\datatable
+
+% --- Axe Y gauche : Speedup ---
+\begin{axis}[
+    width=12cm, height=7cm,
+    axis y line*=left,
+    xlabel={Nombre de processus MPI ($p$)},
+    ylabel={Speedup $S = T_s / T_p$},
+    xmin=0, xmax=21,
+    ymin=0, ymax=21,
+    xtick={1,2,4,6,8,10,12,16,20},
+    grid=major,
+    grid style={dashed, gray!30},
+    legend style={at={(0.02,0.98)}, anchor=north west},
+    title={\textbf{Speedup et efficacite — k-NN (dataset classification)}},
+    title style={yshift=0.2cm},
+]
+
+% Speedup observe
+\addplot[color=blue, mark=*, mark size=2pt, thick]
+  table [x=p, y=speedup] {\datatable};
+\addlegendentry{Speedup observe}
+
+% Speedup ideal (lineaire)
+\addplot[color=gray, dashed, thick, domain=0:21, samples=50]
+  {x};
+\addlegendentry{Speedup ideal ($S=p$)}
+
+\end{axis}
+
+% --- Axe Y droite : Efficacite ---
+\begin{axis}[
+    width=12cm, height=7cm,
+    axis y line*=right,
+    axis x line=none,
+    ylabel={Efficacite $E = S/p$ (\%)},
+    ymin=0, ymax=110,
+    legend style={at={(0.02,0.78)}, anchor=north west},
+]
+
+\addplot[color=green!60!black, mark=square*, mark size=2pt, thick]
+  table [x=p, y=efficiency] {\datatable};
+\addlegendentry{Efficacite (\%)}
+
+% Efficacite ideale
+\addplot[color=gray, dashed, thick, domain=0:21, samples=50]
+  {100};
+\addlegendentry{Efficacite ideale (100\%)}
+
+\end{axis}
+
+\end{tikzpicture}
+\end{document}
+</code></pre>
+
+<p><strong>Compilation :</strong> Le code ci-dessus peut etre compile avec <code>pdflatex</code> ou <code>lualatex</code> apres s'etre assure que le package <code>pgfplots</code> est installe :</p>
+
+<pre><code>pdflatex chart_mpi.tex
+</code></pre>
+
+<p>Le resultat est un graphique vectoriel (PDF) parfaitement integrable dans un rapport scientifique sans perte de qualite. Les axes doubles (gauche pour le speedup, droite pour l'efficacite) permettent une lecture simultanee des deux metriques sur une meme echelle de processus.</p>
+
+<h1 id="sec6" class="page-break">6. Conclusion et perspectives</h1>
+
+<p>Ce projet a permis de mettre en œuvre et d'evaluer la parallelisation de deux algorithmes fondamentaux de machine learning via MPI. Les resultats obtenus montrent un speedup significatif (jusqu'a 12,5× avec 20 processus) tout en preservant la qualite des predictions.</p>
+
+<p>Les principales contributions sont :</p>
+<ul>
+  <li>Une implementation C/MPI optimisee des algorithmes k-NN et K-Means avec strategies de distribution de donnees adaptees.</li>
+  <li>Une interface web interactive complete avec televersement de datasets, historique des executions et visualisation Chart.js.</li>
+  <li>Une interface terminal (CLI) independante, utilisable sans serveur web.</li>
+  <li>Un rapport documente incluant des diagrammes generes par l'application et leur version LaTeX reproducible.</li>
+</ul>
+
+<p>Les perspectives d'amelioration incluent :</p>
+<ul>
+  <li>L'implementation d'algorithmes hybrides MPI + OpenMP pour exploiter a la fois les nœuds et les cœurs.</li>
+  <li>L'experimentation sur des clusters de taille reelle (plus de 100 cœurs) pour evaluer la scalabilite forte.</li>
+  <li>L'integration d'autres metriques (F1-score, silhouette score) et d'autres algorithmes (SVM, Random Forest).</li>
+</ul>
+
+<h1 id="ref">References</h1>
+<ol class="references">
+  <li id="ref-1">Gropp, W., Lusk, E., & Skjellum, A. (1999). <i>Using MPI: Portable Parallel Programming with the Message-Passing Interface</i> (2nd ed.). MIT Press.</li>
+  <li id="ref-2">Foster, I. (1995). <i>Designing and Building Parallel Programs</i>. Addison-Wesley.</li>
+  <li id="ref-3">Amdahl, G. M. (1967). Validity of the single processor approach to achieving large scale computing capabilities. <i>AFIPS Conference Proceedings</i>, 30, 483-485.</li>
+  <li id="ref-4">Cover, T., & Hart, P. (1967). Nearest neighbor pattern classification. <i>IEEE Transactions on Information Theory</i>, 13(1), 21-27.</li>
+  <li id="ref-5">Lloyd, S. (1982). Least squares quantization in PCM. <i>IEEE Transactions on Information Theory</i>, 28(2), 129-137.</li>
+</ol>
+
+<script>
+  // Auto-render KaTeX
+  if (typeof renderMathInElement !== 'undefined') {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });
+  }
+</script>
+
+</body>
+</html>
