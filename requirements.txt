@@ -1,5 +1,1 @@
-numpy
-scipy
-matplotlib
 flask
-flask-cors

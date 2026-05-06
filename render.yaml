@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: tp-mpi-usthb
+    runtime: python
+    region: frankfurt
+    buildCommand: "bash build.sh"
+    startCommand: "python3 server.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    plan: free
